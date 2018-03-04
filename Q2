@@ -1,1 +1,15 @@
+setwd("~/Downloads")
+hersdata <- read.csv("HERSdatasub.csv", header=TRUE)
+library("uwIntroStats")
 
+#Effect on LDL, adjusting for baseline LDL
+ldl <- regress("mean", LDL.1~HT+LDL, data=hersdata)
+ldl
+
+#Effect on HDL, adjusting for baseline HDL
+hdl <- regress("mean", HDL.1~HT+HDL, data=hersdata)
+hdl
+
+#Effect on TG, adjusting for baseline TG
+tg <- regress("mean", TG.1~HT+TG, data=hersdata)
+tg
