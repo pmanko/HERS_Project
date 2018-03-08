@@ -1,0 +1,140 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r setup}
+plot(cars)
+library(uwIntroStats)
+library(data.table)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+
+hers <- as.data.table(read.csv("data/HERSdatasub.csv", header=TRUE))
+
+# Variable Setup
+hers[,LDL.diff:=LDL.1-LDL]
+hers[,HDL.diff:=HDL.1-HDL]
+hers[,BMI.diff:=BMI.1-BMI]
+hers[,TG.diff:=TG.1-TG]
+hers[,glucose.diff:=glucose.1-glucose]
+hers[,TG.HDL.ratio:=TG/HDL]
+hers[,TG.HDL.ratio.1:=TG.1/HDL.1]
+hers[,TG.HDL.ratio.ratio:=TG.HDL.ratio.1/TG.HDL.ratio]
+
+# Indicator variable for predictor
+hers[,treatment:=ifelse(HT=='placebo', 0, 1)]
+hers$treatment <- factor(hers$treatment, labels=c('placebo', 'treatment'))
+
+outcome_vars <- c("LDL.1", "HDL.1", "TG.1", "TG.HDL.ratio.1",  "LDL.diff", "HDL.diff", "TG.diff", "TG.HDL.ratio.ratio")
+```
+
+```{r data}
+hers
+```
+
+# Question 3
+**Is there any attenuation of the hormone therapy treatment effects after adjustment for known
+risk factors for CHD?**
+
+## Participants:
+consisted of 2,763 women who were younger than 80 years, postmenopausal with an intact uterus, and
+had high risk of CHD events at the time of enrollment.
+
+## Treatment Arms:
+1. Hormone therapy
+2. Placebo
+
+## Length of Followup
+>= 4 Years
+
+## Focus
+For this project, we are interested in the effect of hormone therapy on plasma lipid biomarkers for
+CHD after one year of treatment. In particular, it is of primary interest to assess the effects of hormone
+therapy on cholesterol levels and triglyceride levels at the end of year 1 in this clinical trial for
+hormone therapy replacement.
+
+
+## Thoughts and Notes
+We need to define what the treatment effects are. The focus is the change in plasma lipid biomarkers for CHD after 1 year of treatment. We have two treatment arms, so we will look at the difference in these biomarkers from baseline. 
+
+The relevant variables are:
+* SBP and DBP - high systolic and diastolic blood pressure has been found to be a risk factor for heart disease. Apparently using both provides more predictive power: https://www.sciencedaily.com/releases/2009/02/090218181909.htm. However, we don't have blood pressure measures at year 1
+
+These variables have values at both baseline and year 1:
+* BMI - Body mass index obviously
+* glucose - levels of blood glucose
+* LDL - Low-density lipoprotein cholesterol. High levels are associated with CHD.
+* HDL - High-density lipoprotein cholesterol. High levels are negatively associated with CHD.
+* TG - Triglyceride (fat) levels, where higher levels are associated with CHD.
+
+Basically, in question 2, they ask about unadjusted effects. In question 3, they suggest adjusting for these effects. 
+
+We can look at the analysis a couple of ways, but what makes most sense is to have the null hypothesis that there is "no mean treatment effect within strata of a baseline set of variables." To undertake this analysis, we need to determine what our outcome variables are. 
+
+*Option 1:* Use the difference between baseline and year 1 for HDL, LDL, TG, glucose, and BMI. This analysis would investigate the effect that the treatment has on the change of an individual's CHD risk factors, and is more likely to control for some of the inter-individual variability of teh measures. For example, an individual on the high end of the spectrum in these metrics in the treatment branch that had the levels drop significantly but still remain high would have the treatment effect captured; In option 2, this effect would not have been captured. In general, since we have both time points, might make more sense to go with this option, especially since common-sense interpretation of the effect of a drug is that it lowers a given individual's risk factors. The results seem like they would be more easily interpretable, and use more of the available information. 
+
+*Option 2:* Use the raw values for the levels of the variables at year 1; This does not account for the scenario outlined in option 1.
+
+*Option 3:* Test the hypothesis that the slope of the outcome variables is 0 between the two time points, and then stratify by treatment group.
+This is a bit confusing: the POI is the timepoint (year0 vs year1), the outcome variables are the same, but the analysis can be stratified by treatment. 
+
+### Determining Risk Factors and Outcome variables
+It's a bit difficult to figure out from the description of the project what the actual outcome variables are, and what the CDH risk factors are. It seems like the main outcome variables are the plasma lipid biomarkers (LDL, HDL, TG). This leaves glucose, blood pressure, BMI as the main risk factors. 
+
+**I know we're not supposed to use outside sources, but apparently there's evidence that the important CHD risk factor is TG : HDL.** Since this variable is a ratio, we'd likely want to talk about % increases in this ratio, so using a log-tranformed outcome would make sense. 
+
+* https://www.mayoclinic.org/diseases-conditions/high-blood-cholesterol/expert-answers/cholesterol-ratio/faq-20058006
+* https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2664115/
+
+### Simplest Approach: un-adjusted uni-variate analysis
+
+outcome: the outcome vars
+predictor of interest: treatment group
+
+#### Box Plots
+```{r boxPlots}
+boxplots <- lapply(outcome_vars, function(outcome) {
+    ylim = boxplot.stats(hers[[outcome]])$stats[c(1, 5)]
+    ggplot(hers, aes_string(x='treatment', y=outcome)) + geom_boxplot() + coord_flip() + ylab("") + coord_cartesian(ylim = ylim*1.05);
+  })
+  
+m <- marrangeGrob(grobs=boxplots, ncol=2, nrow=4)
+m
+
+```
+
+
+### Possible role of ANOVA
+In general, ANOVA determines the variance due to Model Sum of Squares (as in, explained by our multivariate linear model) and Residual Sum of Squares (the variance not explaiend by the model). In class, we saw examples of it used to test multiple variables at on time. More specifically, ANOVA was run on two linear models, where one includes the variables of interest, and one does not. 
+
+# Indicator for tx arms, placebo and all no's are 0's
+hersdata$HT <- as.integer(hersdata$HT)
+hersdata$HT <- ifelse(hersdata$HT=="2", 0,1)
+
+hersdata$smoking <- as.integer(hersdata$smoking)
+hersdata$smoking <- ifelse(hersdata$smoking=="2", 1,0)
+
+hersdata$drinkany <- as.integer(hersdata$drinkany)
+hersdata$drinkany <- ifelse(hersdata$drinkany=="2", 1,0)
+
+hersdata$exercise <- as.integer(hersdata$exercise)
+hersdata$exercise <- ifelse(hersdata$exercise=="2", 1,0)
+
+hersdata$statins <- as.integer(hersdata$statins)
+hersdata$statins <- ifelse(hersdata$statins=="2", 1,0)
+
+#Effect on LDL, adjusting for baseline LDL
+ldl <- regress("mean", LDL.1~HT+LDL, data=hersdata)
+ldl
+
+#Effect on HDL, adjusting for baseline HDL
+hdl <- regress("mean", HDL.1~HT+HDL, data=hersdata)
+hdl
+
+#Effect on TG, adjusting for baseline TG
+tg <- regress("mean", TG.1~HT+TG, data=hersdata)
+tg
+
