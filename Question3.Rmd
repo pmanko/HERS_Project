@@ -95,16 +95,37 @@ outcome: the outcome vars
 predictor of interest: treatment group
 
 #### Box Plots
-```{r boxPlots}
+```{r boxPlots }
 boxplots <- lapply(outcome_vars, function(outcome) {
     ylim = boxplot.stats(hers[[outcome]])$stats[c(1, 5)]
-    ggplot(hers, aes_string(x='treatment', y=outcome)) + geom_boxplot() + coord_flip() + ylab("") + coord_cartesian(ylim = ylim*1.05);
+    ggplot(hers, aes_string(x='treatment', y=outcome)) + geom_boxplot() + coord_flip(ylim = ylim*1.05) + xlab("");
   })
   
 m <- marrangeGrob(grobs=boxplots, ncol=2, nrow=4)
 m
+```
+
+It seems like difference and raw values both follow the same pattern (which makes sense). 
+
+Also, the TG.HDL ratio doesnt seem to show a difference better than the others, which makes sense since it's a composite variable. It'll be interesting if it's statistically different. 
+
+### Linear Regression
+```{r createLms}
+  names(outcome_vars) <- outcome_vars
+  lms <- lapply(outcome_vars, function(outcome) {
+    f <- paste(outcome, "~ treatment")
+    do.call("regress", list("mean", as.formula(f), data=as.name("hers")))
+  })
+```
+
+```{r}
 
 ```
+
+
+
+
+
 
 
 ### Possible role of ANOVA
