@@ -101,11 +101,14 @@ Basically, in question 2, they ask about unadjusted effects. In question 3, they
 
 We can look at the analysis a couple of ways, but what makes most sense is to have the null hypothesis that there is "no mean treatment effect within strata of a baseline set of variables." To undertake this analysis, we need to determine what our outcome variables are. 
 
-*Option 1:* Use the difference between baseline and year 1 for HDL, LDL, TG, glucose, and BMI. This analysis would investigate the effect that the treatment has on the change of an individual's CHD risk factors, and is more likely to control for some of the inter-individual variability of teh measures. For example, an individual on the high end of the spectrum in these metrics in the treatment branch that had the levels drop significantly but still remain high would have the treatment effect captured; In option 2, this effect would not have been captured. In general, since we have both time points, might make more sense to go with this option, especially since common-sense interpretation of the effect of a drug is that it lowers a given individual's risk factors. The results seem like they would be more easily interpretable, and use more of the available information. 
+### *Option 1:* 
+Use the difference between baseline and year 1 for HDL, LDL, TG, glucose, and BMI. This analysis would investigate the effect that the treatment has on the change of an individual's CHD risk factors, and is more likely to control for some of the inter-individual variability of teh measures. For example, an individual on the high end of the spectrum in these metrics in the treatment branch that had the levels drop significantly but still remain high would have the treatment effect captured; In option 2, this effect would not have been captured. In general, since we have both time points, might make more sense to go with this option, especially since common-sense interpretation of the effect of a drug is that it lowers a given individual's risk factors. The results seem like they would be more easily interpretable, and use more of the available information. 
 
-*Option 2:* Use the raw values for the levels of the variables at year 1; This does not account for the scenario outlined in option 1.
+### *Option 2:* 
+Use the raw values for the levels of the variables at year 1; This does not account for the scenario outlined in option 1.
 
-*Option 3:* Test the hypothesis that the slope of the outcome variables is 0 between the two time points, and then stratify by treatment group.
+### *Option 3:* 
+Test the hypothesis that the slope of the outcome variables is 0 between the two time points, and then stratify by treatment group.
 This is a bit confusing: the POI is the timepoint (year0 vs year1), the outcome variables are the same, but the analysis can be stratified by treatment. 
 
 ### Determining Risk Factors and Outcome variables
