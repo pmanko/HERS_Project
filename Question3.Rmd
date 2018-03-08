@@ -95,7 +95,7 @@ outcome: the outcome vars
 predictor of interest: treatment group
 
 #### Box Plots
-```{r boxPlots }
+```{r boxPlots warning=FALSE}
 boxplots <- lapply(outcome_vars, function(outcome) {
     ylim = boxplot.stats(hers[[outcome]])$stats[c(1, 5)]
     ggplot(hers, aes_string(x='treatment', y=outcome)) + geom_boxplot() + coord_flip(ylim = ylim*1.05) + xlab("");
@@ -118,8 +118,10 @@ Also, the TG.HDL ratio doesnt seem to show a difference better than the others, 
   })
 ```
 
-```{r}
-
+```{r results='hide'}
+  lapply(lms, function(lm){
+    print(paste(paste(lm$args, collapse=' ~ '), paste(round(lm$coefficients[2, ], digit=4), collapse=' '), sep=' | '))
+  })
 ```
 
 
