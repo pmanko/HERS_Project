@@ -5,7 +5,8 @@ output: html_notebook
 
 
 ```{r setup}
-plot(cars)
+knitr::opts_chunk$set(echo = FALSE, results = 'hide', warning = FALSE)
+
 library(uwIntroStats)
 library(data.table)
 library(ggplot2)
@@ -37,6 +38,21 @@ hers[,diabetes:=ifelse(statins=='yes', 1, 0)]
 
 # African American = 0, other = 1, White = 2
 hers[,raceth:=as.integer(raceth) - 1]
+
+# Blood pressure categorical var based on http://www.acc.org/latest-in-cardiology/articles/2017/11/08/11/47/mon-5pm-bp-guideline-aha-2017
+bp_level_names = c('normal', 'elevated', 'stage1', 'stage2', 'crisis')
+
+bp_cat <- function(sbp, dbp) {
+  if(sbp < 120 && dbp < 80) 0
+  else if(sbp < 130 && dbp < 80) 1
+  else if(sbp < 140 || dbp < 90) 2
+  else if((sbp >= 140 && sbp < 180) || (dbp >= 90 && dbp < 120)) 3
+  else if(sbp > 180 || dbp > 120) 4
+  else NA
+}
+
+hers[,bp.category:=bp_cat(SBP, DBP)]
+table(hers$bp.category)
 
 outcome_vars <- c("LDL.1", "HDL.1", "TG.1", "TG.HDL.ratio.1",  "LDL.diff", "HDL.diff", "TG.diff", "TG.HDL.ratio.ratio")
 ```
@@ -105,7 +121,7 @@ outcome: the outcome vars
 predictor of interest: treatment group
 
 #### Box Plots
-```{r boxPlots }
+```{r boxPlots, echo=TRUE, warning=FALSE, paged.print=FALSE}
 boxplots <- lapply(outcome_vars, function(outcome) {
     ylim = boxplot.stats(hers[[outcome]])$stats[c(1, 5)]
     ggplot(hers, aes_string(x='treatment', y=outcome)) + geom_boxplot() + coord_flip(ylim = ylim*1.05) + xlab("");
@@ -153,12 +169,11 @@ hers[diabetes == 1]
 
 ### Adjusting for all of the risk factors
 ```{r}
-  outcome_vars <- c('LDL.diff', 'HDL.diff', 'TG.diff')
-  risk_factors <- c('age', 'raceth', 'BMI', 'smoking', 'drinkany', 'exercise', 'statins')
-  names(outcome_vars) <- outcome_vars
-  lms.adjusted <- lapply(outcome_vars, function(outcome) {
+  main_outcome_vars <- c('LDL.diff', 'HDL.diff', 'TG.diff')
+  risk_factors <- c('age', 'raceth', 'BMI', 'smoking', 'drinkany', 'exercise', 'statins', 'bp.category')
+  names(main_outcome_vars) <- main_outcome_vars
+  lms.adjusted <- lapply(main_outcome_vars, function(outcome) {
     f <- paste(outcome, "~ treatment +", paste(risk_factors, collapse=' + '))
-    print(f)
     do.call("regress", list("mean", as.formula(f), data=as.name("hers")))
   })
 
@@ -167,7 +182,19 @@ hers[diabetes == 1]
   })
 ```
 
+Compare this to the unadjusted regression analysis:
+```{r }
+  names(main_outcome_vars) <- main_outcome_vars
+  lms <- lapply(main_outcome_vars, function(outcome) {
+    f <- paste(outcome, "~ treatment")
+    do.call("regress", list("mean", as.formula(f), data=as.name("hers")))
+  })
 
+  temp <- lapply(lms, function(lm){
+    print(paste(str_pad(paste(lm$args, collapse=' ~ '), side='left', width=30), paste(round(lm$coefficients[2, ], digit=4), collapse=' '), sep=' | '))
+  })
+  
+```
 
 
 
@@ -181,25 +208,36 @@ In this case, adding age, race, bmi, smoking, dinkany, excercise is not signific
   
   clean_hers <- hers[complete.cases(hers[,..risk_factors])]
   lm0 <- lm(LDL.diff ~ treatment + statins, data=clean_hers)
-  lm1 <- lm(LDL.diff ~ treatment + statins + age + raceth + BMI + smoking + drinkany + exercise , data=clean_hers)
+  lm1 <- lm(LDL.diff ~ treatment + statins + age + raceth + BMI + smoking + drinkany + exercise + bp.category , data=clean_hers)
+  anova.LDL.statins <- anova(lm0, lm1)
+  
+  lm0 <- lm(LDL.diff ~ treatment, data=clean_hers)
+  lm1 <- lm(LDL.diff ~ treatment + statins + age + raceth + BMI + smoking + drinkany + exercise + bp.category , data=clean_hers)
   anova.LDL <- anova(lm0, lm1)
   
-  lm0 <- lm(HDL.diff ~ treatment + statins, data=clean_hers)
-  lm1 <- lm(HDL.diff ~ treatment + statins + age + raceth + BMI + smoking + drinkany + exercise , data=clean_hers)
+  lm0 <- lm(HDL.diff ~ treatment, data=clean_hers)
+  lm1 <- lm(HDL.diff ~ treatment + statins + age + raceth + BMI + smoking + drinkany + exercise + bp.category , data=clean_hers)
   anova.HDL <- anova(lm0, lm1)
   
   lm0 <- lm(TG.diff ~ treatment, data=clean_hers)
-  lm1 <- lm(TG.diff ~ treatment + statins + age + raceth + BMI + smoking + drinkany + exercise , data=clean_hers)
+  lm1 <- lm(TG.diff ~ treatment + statins + age + raceth + BMI + smoking + drinkany + exercise + bp.category , data=clean_hers)
   anova.TG <- anova(lm0, lm1)
 
-  lm0 <- lm(HDL.diff ~ treatment + statins, data=clean_hers)
-  lm1 <- lm(HDL.diff ~ treatment + statins + age + raceth + BMI + smoking + drinkany + exercise , data=clean_hers)
-  
-  anova
+  # Very significant!
+  lm0 <- lm(LDL.diff ~ treatment, data=clean_hers)
+  lm1 <- lm(LDL.diff ~ treatment + statins , data=clean_hers)
+  anova.statins <- anova(lm0, lm1)
     
+  print("HDL")
   anova.HDL
+  print("TG")
   anova.TG
+  print("LDL")
   anova.LDL
+  print("LDL with Statins")
+  anova.LDL.statins
+  print("Statins")
+  anova.statins
 ```
 
 ## Some Questions / Thoughts
