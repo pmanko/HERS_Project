@@ -1,12 +1,13 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
 ---
 
 
 ```{r setup}
-knitr::opts_chunk$set(echo = FALSE, results = 'hide', warning = FALSE)
-
 library(uwIntroStats)
 library(data.table)
 library(ggplot2)
@@ -182,7 +183,7 @@ hers[diabetes == 1]
   })
 ```
 
-Compare this to the unadjusted regression analysis:
+#### Compare this to the unadjusted regression analysis:
 ```{r }
   names(main_outcome_vars) <- main_outcome_vars
   lms <- lapply(main_outcome_vars, function(outcome) {
@@ -196,6 +197,19 @@ Compare this to the unadjusted regression analysis:
   
 ```
 
+#### Full adjusted models:
+##### LDL.diff
+```{r ldl, echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+print(lms.adjusted$LDL.diff)
+```
+##### HDL.diff
+```{r}
+lms.adjusted$HDL.diff
+```
+##### TG.diff
+```{r echo=TRUE, warning=FALSE}
+lms.adjusted$TG.diff
+```
 
 
 ## Possible role of ANOVA
@@ -239,6 +253,7 @@ In this case, adding age, race, bmi, smoking, dinkany, excercise is not signific
   print("Statins")
   anova.statins
 ```
+Again, the significant ones are the ones where statins are added to a model with LDL as the outcome. Everything else is not significant - suggesting what? This suggest that statins explain a significant part of the variance, but there is not enough evidence for the other variables.
 
 ## Some Questions / Thoughts
 
