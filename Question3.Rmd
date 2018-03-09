@@ -222,7 +222,8 @@ nrow(hers[diabetes == 1])
   
   lms.adjusted <- lapply(main_outcome_vars, function(outcome) {
     f <- paste(outcome, "~ treatment +", paste(risk_factors, collapse=' + '))
-    do.call("lm", list(as.formula(f), data=as.name("hers")))
+    print(f)
+    #do.call("lm", list(as.formula(f), data=as.name("hers")))
   })
 
   # temp <- lapply(lms.adjusted, function(lm){
@@ -260,10 +261,15 @@ tab1 <- tab[1:14]
 tab2 <- tab[15:28]
 tab3 <- tab[29:42]
 
+kable(tab, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "bordered", "compact"), full_width = F, position='left') %>%
+  group_rows("Change in LDL", 1, 14) %>%
+  group_rows("Change in HDL", 15, 28) %>%
+  group_rows("Change in TG", 29, 42)
 
 kable(tab1, "html") %>%
   kable_styling(bootstrap_options = c("striped", "bordered", "compact"), full_width = F, position='left') %>%
-  group_rows("Change in LDL", 1, 14)
+  group_rows("Change in LDL", 1, 14) 
 
 kable(tab2, "html") %>%
   kable_styling(bootstrap_options = c("striped", "bordered", "compact"), full_width = F, position='left') %>%
@@ -302,6 +308,15 @@ lms.adjusted$HDL.diff
 ```{r echo=TRUE, warning=FALSE}
 lms.adjusted$TG.diff
 ```
+
+
+## Q4 - effect mod/precision/confounder
+
+### 
+```{r}
+
+```
+
 
 
 ## Possible role of ANOVA
