@@ -14,6 +14,9 @@ library(ggplot2)
 library(gridExtra)
 library(grid)
 library(stringr)
+library(ggthemes)
+library(kableExtra)
+library(knitr)
 
 hers <- as.data.table(read.csv("data/HERSdatasub.csv", header=TRUE))
 
@@ -35,16 +38,27 @@ hers[,smoking:=ifelse(smoking=='yes', 1, 0)]
 hers[,drinkany:=ifelse(drinkany=='yes', 1, 0)]
 hers[,exercise:=ifelse(exercise=='yes', 1, 0)]
 hers[,statins:=ifelse(statins=='yes', 1, 0)]
-hers[,diabetes:=ifelse(statins=='yes', 1, 0)]
+hers[,diabetes:=ifelse(diabetes=='yes', 1, 0)]
 
 # African American = 0, other = 1, White = 2
-hers[,raceth:=as.integer(raceth) - 1]
+hers[,raceth:=factor(raceth)]
+
+bp_level_names = c('normal', 'elevated', 'stage1', 'stage2')
+
+bp_cat <- function(sbp, dbp) {
+  if(sbp < 120 && dbp < 80) 0
+  else if(sbp < 130 && dbp < 80) 1
+  else if(sbp < 140 || dbp < 90) 2
+  else if((sbp >= 140 && sbp < 180) || (dbp >= 90 && dbp < 120)) 3
+  else if(sbp > 180 || dbp > 120) 4
+  else NA
+}
 
 hers[,bp.category:=bp_cat(SBP, DBP),by=1:nrow(hers)]
-hers[,bp.category:=factor(bp.category, labels=)]
+hers[,bp.category:=factor(bp.category, labels=bp_level_names)]
 table(hers$bp.category)
 
-outcome_vars <- c("LDL.1", "HDL.1", "TG.1", "TG.HDL.ratio.1",  "LDL.diff", "HDL.diff", "TG.diff", "TG.HDL.ratio.ratio")
+outcome_vars <- c("LDL.diff", "HDL.diff", "TG.diff")
 ```
 
 ```{r data}
@@ -112,12 +126,19 @@ predictor of interest: treatment group
 
 #### Box Plots
 ```{r boxPlots, echo=TRUE, warning=FALSE, paged.print=FALSE}
-boxplots <- lapply(outcome_vars, function(outcome) {
-    ylim = boxplot.stats(hers[[outcome]])$stats[c(1, 5)]
-    ggplot(hers, aes_string(x='treatment', y=outcome)) + geom_boxplot() + coord_flip(ylim = ylim*1.05) + xlab("");
+boxplot_vars <- c("LDL", "LDL.1", "LDL.diff", "HDL", "HDL.1", "HDL.diff", "TG", "TG.1", "TG.diff")
+names(boxplot_vars) <- c("Baseline LDL (mg/dl)", "LDL at 1 Year (mg/dl)", "Change in LDL (mg/dl)", 
+                         "Baseline HDL (mg/dl)", "HDL at 1 Year (mg/dl)", "Change in HDL (mg/dl)",
+                         "Baseline TG (mg/dl)", "TG at 1 Year (mg/dl)", "Change in TG (mg/dl)")
+
+temp_df <- data.frame(var=boxplot_vars, name=names(boxplot_vars))
+
+boxplots <- apply(temp_df, 1, function(outcome) {
+    ylim = boxplot.stats(hers[[outcome[1]]])$stats[c(1, 5)]
+    ggplot(hers, aes_string(y=outcome[1])) + geom_boxplot(aes(color=factor(treatment, labels=c('placebo', 'treatement')), x=factor(treatment))) + coord_flip(ylim = ylim*1.05) + xlab("") + theme_minimal() + theme(axis.text.y=element_blank(), legend.position = 'none') + ylab(outcome[2]);
   })
   
-m <- marrangeGrob(grobs=boxplots, ncol=2, nrow=4)
+m <- marrangeGrob(grobs=boxplots, ncol=3, nrow=3)
 m
 ```
 
@@ -127,16 +148,54 @@ Also, the TG.HDL ratio doesnt seem to show a difference better than the others, 
 
 ### Linear Regression
 ```{r }
+  tab <- data.frame
+
   names(outcome_vars) <- outcome_vars
   lms <- lapply(outcome_vars, function(outcome) {
     f <- paste(outcome, "~ treatment")
+    
     do.call("regress", list("mean", as.formula(f), data=as.name("hers")))
-  })
-
-  temp <- lapply(lms, function(lm){
-    print(paste(str_pad(paste(lm$args, collapse=' ~ '), side='left', width=30), paste(round(lm$coefficients[2, ], digit=4), collapse=' '), sep=' | '))
+  
   })
   
+  
+  
+  # temp <- lapply(lms, function(lm){
+  #   print(paste(str_pad(paste(lm$args, collapse=' ~ '), side='left', width=30), paste(round(lm$coefficients[2, ], digit=4), collapse=' '), sep=' | '))
+  # })
+
+
+```
+
+```{r}
+rnd <- function(x) signif(x,3)
+fpv <- function(x) format.pval(x, digits=3)
+
+tab <- rbindlist(lapply(lms, function(lm){
+  coefs <- lm$augCoefficients 
+  r1 <- coefs[1, ]
+  r3 <- coefs[2, ]
+  r2 <- r1 + r3
+  
+  as.data.table(rbind(r1, r2, r3))
+}))
+rn <- c("placebo", "treatment", "placebo - treatment")
+cols <- c(1, 4, 5, 8)
+tab <- tab[,..cols]
+tab[,`95% CI`:=paste('[', paste(rnd(`95%L`), rnd(`95%H`), sep=', '), ']', sep='')]
+tab[,`p-value`:=fpv(`Pr(>F)`)]
+tab[, `Estimate (mg/dl)`:=rnd(Estimate)]
+tab[,`Change from Baseline`:=rn]
+
+cols <- c(8, 7, 5, 6)
+tab <- tab[,..cols]
+
+kable(tab, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "bordered", "compact"), full_width = F, position='left') %>%
+  group_rows("LDL", 1, 3) %>%
+  group_rows("HDL", 4, 6) %>%
+  group_rows("TG", 7, 9)
+
 ```
 
 Again, all are highly significant except the TG/HDL ratio measures. That's definitely interesting; if this ratio is strongly predictive of CHD, the fact the treatment does not really affect it as much might be troubling. 
@@ -151,25 +210,69 @@ Possible: `statins`
 
 I'm not sure whether to include statins as a risk factor, since they are also a treatment; However, since they might have a huge effect on the response, I'll include them. Might want to determine if these risk factors are precision/confounder/effect modifiers etc.
 
-I'm taking out diabetes, since our sample has no diabetics. 
 ```{r}
-hers[diabetes == 1]
+nrow(hers[diabetes == 1])
 ```
 
 
 ### Adjusting for all of the risk factors
 ```{r}
   main_outcome_vars <- c('LDL.diff', 'HDL.diff', 'TG.diff')
-  risk_factors <- c('age', 'raceth', 'BMI', 'smoking', 'drinkany', 'exercise', 'statins', 'bp.category')
-  names(main_outcome_vars) <- main_outcome_vars
+  risk_factors <- c('age', 'raceth', 'BMI', 'smoking', 'drinkany', 'exercise', 'statins', 'bp.category', 'diabetes', 'glucose')
+  
   lms.adjusted <- lapply(main_outcome_vars, function(outcome) {
     f <- paste(outcome, "~ treatment +", paste(risk_factors, collapse=' + '))
-    do.call("regress", list("mean", as.formula(f), data=as.name("hers")))
+    do.call("lm", list(as.formula(f), data=as.name("hers")))
   })
 
-  temp <- lapply(lms.adjusted, function(lm){
-    print(paste(str_pad(paste(lm$args, collapse=' ~ '), side='left', width=30), paste(round(lm$coefficients[2, ], digit=4), collapse=' '), sep=' | '))
-  })
+  # temp <- lapply(lms.adjusted, function(lm){
+  #   print(paste(str_pad(paste(lm$args, collapse=' ~ '), side='left', width=30), paste(round(lm$coefficients[2, ], digit=4), collapse=' '), sep=' | '))
+  # })
+  
+  
+  
+```
+
+```{r}
+library(reporttools)
+rnd <- function(x) disp(x,d1=3, d2=3)
+fpv <- function(x) formatPval(x)
+
+tab <- rbindlist(lapply(lms.adjusted, function(lm){
+  c <- summary(lm)$coefficients
+  ci <- confint(lm)
+  rn <- data.table(Variable=names(lm$coefficients))
+  as.data.table(cbind(rn, c, ci)[-1])
+}))
+
+cols <- c(1, 2, 6, 7, 5)
+
+tab <- tab[,..cols]
+
+tab[,`95% CI`:=paste('[', paste(rnd(`2.5 %`), rnd(`97.5 %`), sep=', '), ']', sep='')]
+tab[,`p-value`:=fpv(`Pr(>|t|)`)]
+tab[, `Estimate`:=rnd(Estimate)]
+
+cols <- c(1, 2, 6, 7)
+tab <- tab[,..cols]
+
+tab1 <- tab[1:14]
+tab2 <- tab[15:28]
+tab3 <- tab[29:42]
+
+
+kable(tab1, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "bordered", "compact"), full_width = F, position='left') %>%
+  group_rows("Change in LDL", 1, 14)
+
+kable(tab2, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "bordered", "compact"), full_width = F, position='left') %>%
+  group_rows("Change in HDL", 1, 14)
+
+kable(tab3, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "bordered", "compact"), full_width = F, position='left') %>%
+  group_rows("Change in TG", 1, 14)
+
 ```
 
 #### Compare this to the unadjusted regression analysis:
