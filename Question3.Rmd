@@ -40,19 +40,7 @@ hers[,diabetes:=ifelse(statins=='yes', 1, 0)]
 # African American = 0, other = 1, White = 2
 hers[,raceth:=as.integer(raceth) - 1]
 
-# Blood pressure categorical var based on http://www.acc.org/latest-in-cardiology/articles/2017/11/08/11/47/mon-5pm-bp-guideline-aha-2017
-bp_level_names = c('normal', 'elevated', 'stage1', 'stage2', 'crisis')
-
-bp_cat <- function(sbp, dbp) {
-  if(sbp < 120 && dbp < 80) 0
-  else if(sbp < 130 && dbp < 80) 1
-  else if(sbp < 140 || dbp < 90) 2
-  else if((sbp >= 140 && sbp < 180) || (dbp >= 90 && dbp < 120)) 3
-  else if(sbp > 180 || dbp > 120) 4
-  else NA
-}
-
-hers[,bp.category:=bp_cat(SBP, DBP)]
+hers[,bp.category:=bp_cat(SBP, DBP),by=1:nrow(hers)]
 table(hers$bp.category)
 
 outcome_vars <- c("LDL.1", "HDL.1", "TG.1", "TG.HDL.ratio.1",  "LDL.diff", "HDL.diff", "TG.diff", "TG.HDL.ratio.ratio")
@@ -254,6 +242,8 @@ In this case, adding age, race, bmi, smoking, dinkany, excercise is not signific
   anova.statins
 ```
 Again, the significant ones are the ones where statins are added to a model with LDL as the outcome. Everything else is not significant - suggesting what? This suggest that statins explain a significant part of the variance, but there is not enough evidence for the other variables.
+
+What does running anova on a single model do? When given a single argument it produces a table which tests whether the model terms are significant.
 
 ## Some Questions / Thoughts
 
