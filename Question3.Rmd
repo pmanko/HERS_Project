@@ -158,10 +158,10 @@ Again, all are highly significant except the TG/HDL ratio measures. That's defin
 So, this is a good possibly a good summary of Q2 results. I'll focus on the difference variables (`LDL.diff`, `HDL.diff`, `TG.diff`). 
 
 ## Q3 Analysis
-Outcome variables: `LDL.diff`, `HDL.diff`, and `TG.diff`
-Predictor variable: `treatment`
-"Known" Risk factors: `age`, `race`, `BMI`, `smoking`, `drinkany`, `excercise`, `diabetes`
-Possible: `statins`
+* Outcome variables: `LDL.diff`, `HDL.diff`, and `TG.diff`
+* Predictor variable: `treatment`
+* "Known" Risk factors: `age`, `race`, `BMI`, `smoking`, `drinkany`, `excercise`, `diabetes`, `bp.category`
+* Possible: `statins`
 
 I'm not sure whether to include statins as a risk factor, since they are also a treatment; However, since they might have a huge effect on the response, I'll include them. Might want to determine if these risk factors are precision/confounder/effect modifiers etc.
 
@@ -169,7 +169,13 @@ I'm taking out diabetes, since our sample has no diabetics.
 ```{r}
 hers[diabetes == 1]
 ```
+### NOTE!!
+It's a bit confusing about what to focus on in Q3 vs. Q4. The variables suggested for Q4 can also be though of as known risk factors. Demographics also can be thought of as risk factors (genetic variation, cultural, etc.). 
 
+What I'm suggesting: 
+1. Q3 can focus on determining the attenuation of treatment effects - basically whether the effects are the same after adjusting for all of these variables. Also, we can discuss which variables to attenuate the analysis. 
+
+2. In Q4, we can focus on understanding the relationships between our co-variates and the outcome variables. In general, talk about which variables have any sort of association with the outcome of interest, which might be precision variables, which might be confounders, and which might be effect modifiers. 
 
 ### Adjusting for all of the risk factors
 ```{r}
